@@ -1,115 +1,130 @@
 # STM32F446RE Bare-Metal BME280 Project
+# STM32F446RE Bare-Metal BME280 Driver
 
-This project is the next step after a previous bare-metal STM32F446RE setup project. The startup code, linker script, device header, reset handler, and system-clock configuration provide the basic environment needed to build and flash firmware without using STM32 HAL or CubeMX-generated code.
+A learning project that implements a BME280 sensor driver and I2C1 peripheral layer for an STM32F446RE without STM32 HAL or CubeMX-generated code.
 
-The current work extends that environment with a register-level I2C driver and the first structure of a BME280 driver. The immediate goal is to build a functional prototype, verify communication with the sensor, and then improve the implementation with reliability and fault-tolerance features.
+The project includes a custom startup file, linker script, system-clock setup, register-level GPIO/I2C configuration, BME280 calibration parsing, and compensation routines. It is an active prototype: the firmware builds and the sensor communication path is being developed, but the reported measurements have not yet been fully validated against a reference instrument.
 
-## Target Hardware
+## Hardware
 
-- MCU: STM32F446RE
-- Board: STM32 NUCLEO-F446RE or a compatible STM32F446RE board
-- Sensor: Bosch BME280
-- Interface: I2C1
-- I2C pins:
-	- PB6: I2C1_SCL
-	- PB7: I2C1_SDA
+- **Microcontroller:** STM32F446RE
+- **Board:** STM32 Nucleo-F446RE or compatible STM32F446RE board
+- **Sensor:** Bosch BME280 in I2C mode
+- **I2C peripheral:** I2C1
+- **SCL:** PB6
+- **SDA:** PB7
 
-The I2C lines require pull-up resistors. The internal GPIO pull-ups are configured for the prototype, but external pull-ups are normally preferred for a reliable I2C bus and should be selected according to the bus voltage, capacitance, and desired speed.
+Connect the sensor ground and supply according to the BME280 module or breakout-board documentation. SDA and SCL need pull-up resistors. The prototype enables the STM32 internal pull-ups, but external pull-ups are recommended for a reliable bus.
 
-## Project Background
+The current driver uses BME280 I2C address `0x77`. Change the address in `src/bme280.c` to `0x76` when the sensor's SDO pin selects that address.
 
-The project is built from the ground up around the STM32F446RE reference material and device header definitions. It currently includes:
+## Requirements
 
-- A custom linker script for flash and SRAM
-- A custom Cortex-M4 startup file and interrupt vector table
-- Manual `.data` initialization and `.bss` clearing
-- A custom `SystemInit()` implementation
-- Direct peripheral-register access through `stm32f446xx.h`
+- GNU Arm Embedded Toolchain (`arm-none-eabi-gcc`, `arm-none-eabi-objcopy`)
+- GNU Make
+- OpenOCD
+- An ST-Link debugger/programmer
+- VS Code with the Cortex-Debug extension for graphical debugging
 
+On Ubuntu, the main packages can be installed with:
 
-## Current Structure
-
-```text
-inc/
-	bme280.h              BME280 driver interface under development
-	i2c.h                 I2C driver interface
-	stm32f446xx.h         STM32F446RE register definitions
-	system_stm32f4xx.h    System declarations
-	core_cm4.h             Cortex-M4 core definitions
-	mpu_armv7.h            Cortex-M4 MPU definitions
-
-src/
-	bme280.c              BME280 driver under development
-	i2c.c                 I2C1 GPIO and peripheral configuration
-	main.c                Current firmware entry point and LED test
-	rcc.c                 System clock initialization
-
-startup/
-	startup_stm32f446.s   Reset handler and interrupt vector table
-
-linker_script.ld        Flash/SRAM memory layout and section placement
+```sh
+sudo apt install gcc-arm-none-eabi binutils-arm-none-eabi make openocd
 ```
 
-## I2C Prototype
+## Build
 
-The current I2C implementation configures I2C1 in standard mode at approximately 100 kHz, assuming:
+Build the firmware from the project root:
 
-- An 8 MHz HSE source
-- A 180 MHz system clock
-- A 45 MHz APB1 clock
-- `CCR = 225`
-- `TRISE = 46`
+```sh
+make
+```
 
-The driver currently provides low-level operations for:
+The ELF image is written to `build/app.elf`. The Makefile uses `-Og -g3`, which keeps the image suitable for source-level debugging.
 
-- Peripheral and GPIO setup
-- START generation
-- STOP generation
-- Address transmission
-- Byte transmission
-- Multi-byte reads
+Remove generated files with:
 
-The BME280 driver will build on these operations to access the sensor identity, reset, calibration registers, configuration registers, and measurement data.
+```sh
+make clean
+```
 
-## Planned BME280 Workflow
+## Flash
 
-The intended sensor initialization sequence is:
+Connect the board through ST-Link and run:
 
-1. Initialize I2C1.
-2. Read the BME280 chip ID register and verify the expected value.
-3. Issue a sensor reset if required.
-4. Read and store the temperature, pressure, and humidity calibration coefficients.
-5. Configure oversampling, filter, and measurement mode.
-6. Read raw measurement registers.
-7. Apply Bosch compensation formulas to obtain temperature, pressure, and humidity values.
+```sh
+make flash
+```
 
-## Development Phases
+The flash target uses OpenOCD with:
 
-### Phase 1: Functional Prototype
+```text
+interface/stlink.cfg
+target/stm32f4x.cfg
+```
 
-- Confirm the custom startup and clock configuration run on the target board.
-- Confirm I2C signals with a logic analyzer or oscilloscope.
-- Read the BME280 chip ID.
-- Implement register read/write transactions.
-- Read calibration data and produce compensated measurements.
+The target assumes an 8 MHz HSE source and configures the MCU for a 180 MHz system clock. Verify that this matches the board hardware before troubleshooting I2C communication.
 
-### Phase 2: Reliability and Fault Tolerance
+## Debug In VS Code
 
-- Add timeouts to every polling loop.
-- Return explicit status and error values instead of blocking indefinitely.
-- Detect NACK, bus error, arbitration loss, overrun, and timeout conditions.
-- Handle invalid arguments, including null buffers and zero-length transfers.
-- Add I2C bus-busy detection and bus recovery for a stuck SDA line.
-- Preserve unrelated peripheral register bits during configuration.
-- Validate clock-source and bus-frequency assumptions at startup.
-- Add tests for register encoding, calibration parsing, and compensation calculations.
+The repository contains these local VS Code configurations:
 
-## Important Prototype Assumptions
+- `.vscode/launch.json` starts Cortex-Debug with OpenOCD.
+- `.vscode/tasks.json` runs `make` before the debug session.
 
-The prototype is intentionally small and blocking. It is useful for learning the peripheral state machine and proving the electrical connection, but it is not yet intended for unattended or safety-critical operation. A disconnected sensor, incorrect address, missing pull-up, or stuck bus may currently leave the firmware waiting in a polling loop.
+Install Cortex-Debug, connect the ST-Link, open the project folder in VS Code, and press `F5`. The launch configuration uses `gdb-multiarch`, stops at `main`, and loads `build/app.elf`.
 
-The system-clock code also assumes that the selected HSE source is available and configured correctly for the board. Confirm the board's clock source before diagnosing I2C behavior.
+## Current Firmware Flow
+
+`main()` currently:
+
+1. Configures I2C1 on PB6/PB7.
+2. Loads BME280 calibration data.
+3. Configures temperature, humidity, and pressure oversampling.
+4. Continuously reads compensated temperature, pressure, and humidity values.
+
+The public driver interface is:
+
+```c
+void bme280_setup(uint8_t osrs_t, uint8_t osrs_h, uint8_t osrs_p,
+                  uint8_t mode, uint8_t t_sb, uint8_t filter);
+void bme280_read_values(float *temperature, float *pressure, float *humidity);
+```
+
+## Repository Layout
+
+```text
+inc/                    Public headers and STM32 device headers
+src/bme280.c            BME280 calibration, configuration, and compensation
+src/i2c.c               Register-level I2C1 implementation
+src/main.c              Firmware entry point
+src/rcc.c               System clock initialization
+startup/                Cortex-M4 startup and vector table
+linker_script.ld        Flash and SRAM layout
+Makefile                Build, clean, readelf, and flash targets
+.vscode/                Cortex-Debug and pre-launch build configuration
+```
+
+## Known Limitations
+
+This is not yet a production-ready driver. Current limitations include:
+
+- I2C operations are blocking and do not have timeouts.
+- Bus errors, NACKs, arbitration loss, and stuck-bus recovery are not handled comprehensively.
+- Sensor identity and calibration data are not yet validated with explicit status codes.
+- Measurement values still need hardware validation and comparison with known-good readings.
+- The clock configuration depends on the expected HSE source and board setup.
+- The code currently assumes valid output pointers and a connected, correctly configured sensor.
+
+## Planned Work
+
+- Add chip-ID and sensor-presence checks.
+- Add I2C timeouts and error reporting.
+- Validate raw register reads with a logic analyzer.
+- Verify calibration parsing and compensation results against Bosch reference data.
+- Add reset, status, and forced-mode handling.
+- Add tests for register encoding and compensation calculations.
 
 ## Status
 
-Work in progress. The bare-metal environment and initial I2C layer are present. The BME280 configuration and measurement implementation are the next development steps.
+Work in progress. This repository is primarily a bare-metal learning project and a foundation for a more reliable STM32 BME280 driver.

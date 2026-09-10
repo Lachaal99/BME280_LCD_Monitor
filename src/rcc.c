@@ -36,4 +36,11 @@ void SystemInit(void) {
     // 8. Select PLL as System Clock Source and wait for switch confirmation
     RCC->CFGR |= RCC_CFGR_SW_PLL;
     while ((RCC->CFGR & RCC_CFGR_SWS_Msk) != RCC_CFGR_SWS_PLL);
+
+    // Grant full access to FPU coprocessors CP10 and CP11
+    SCB->CPACR |= ((3UL << 10*2) | (3UL << 11*2));
+
+    // Optional: Memory barrier to ensure write completes before float operations execute
+    __DSB();
+    __ISB();
 }

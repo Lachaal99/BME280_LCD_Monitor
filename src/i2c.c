@@ -1,6 +1,6 @@
 #include"stm32f446xx.h"
 
-extern uint8_t ADDRESS;
+extern uint8_t address;
 
 void i2c_setup(void){
     // clock enabling
@@ -49,13 +49,12 @@ void i2c_start(void){
 // stop confition generation
 void i2c_stop(void){
     I2C1->CR1 |= I2C_CR1_STOP;
-    while(!(I2C1->SR1 & I2C_SR1_STOPF));
 }
 
 
 // function for the address send handling
-void i2c_send_addr(uint8_t address){
-    I2C1->DR = address;
+void i2c_send_addr(uint8_t adr){
+    I2C1->DR = (adr);
     while(!(I2C1->SR1 & I2C_SR1_ADDR));
     (void)I2C1->SR1;
     (void)I2C1->SR2;
@@ -68,25 +67,56 @@ void i2c_send_byte(uint8_t byte){
     while(!(I2C1->SR1 & I2C_SR1_BTF));
 }
 
+void i2c_write_byte_to_reg(uint8_t regadr,uint8_t byte){
+    i2c_start();
+    i2c_send_addr(address << 1);
+    i2c_send_byte(regadr);
+    i2c_send_byte(byte);
+    i2c_stop();
+}
+
+
+
 void i2c_read_bytes(uint8_t* buffer , uint8_t size){
 
     //set the acknowledgement bit
     I2C1->CR1 |= I2C_CR1_ACK;
     i2c_start();
-    i2c_send_addr(ADDRESS | 0x01);
+    i2c_send_addr(address<<1 | 0x01);
     uint8_t remaining = size;
     
-    while(remaining> 1){
-        while(!(I2C1->SR1 & SPI_SR_RXNE));
+    while(remaining> 2){
+        while(!(I2C1->SR1 & I2C_SR1_RXNE));
         buffer[size-remaining] = I2C1->DR;
         remaining--;
     }
-
+    while(!(I2C1->SR1 & I2C_SR1_BTF));
     // turn off the ack
-    I2C1->CR1 = ~(I2C_CR1_ACK);
+    I2C1->CR1 &= ~(I2C_CR1_ACK);
+    buffer[size-remaining] = I2C1->DR;
+    remaining--;
     i2c_stop();
 
-    while(!(I2C1->SR1 & SPI_SR_RXNE));
+    while(!(I2C1->SR1 & I2C_SR1_RXNE));
     buffer[size-remaining] = I2C1->DR;
 
+}
+
+uint8_t i2c_read_byte(void){
+    // enable the ack
+    I2C1->CR1 |= I2C_CR1_ACK;
+    i2c_start();
+    I2C1->DR = (address << 1 |0x01);
+    while(!(I2C1->SR1 & I2C_SR1_ADDR));
+    //disable the ACK
+    I2C1->CR1 &= ~(I2C_CR1_ACK);
+    //clear the ADDR flag
+    (void)I2C1->SR1;
+    (void)I2C1->SR2;
+    //stop generation
+    i2c_stop();
+    //reading
+    while(!(I2C1->SR1 &I2C_SR1_RXNE));
+    uint8_t data = I2C1->DR;
+    return data;
 }
