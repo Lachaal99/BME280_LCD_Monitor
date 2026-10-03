@@ -43,6 +43,7 @@ void i2c_setup(void){
 
 //start condition generation
 void i2c_start(void){
+    while (I2C1->CR1 & I2C_CR1_STOP);
     I2C1->CR1 |= I2C_CR1_START;
     while(!(I2C1->SR1 & I2C_SR1_SB));
 }
@@ -81,24 +82,28 @@ void i2c_read_bytes(uint8_t* buffer , uint8_t size){
 
     //set the acknowledgement bit
     I2C1->CR1 |= I2C_CR1_ACK;
+    uint8_t i=0;
     i2c_start();
+    //send the address with read bit
     i2c_send_addr(address<<1 | 0x01);
-    uint8_t remaining = size;
     
-    while(remaining> 2){
+    
+    while(size - i> 3){
         while(!(I2C1->SR1 & I2C_SR1_RXNE));
-        buffer[size-remaining] = I2C1->DR;
-        remaining--;
+        buffer[i++] = I2C1->DR;
     }
     while(!(I2C1->SR1 & I2C_SR1_BTF));
     // turn off the ack
     I2C1->CR1 &= ~(I2C_CR1_ACK);
-    buffer[size-remaining] = I2C1->DR;
-    remaining--;
+    buffer[i++] = I2C1->DR;
+    while(!(I2C1->SR1 & I2C_SR1_BTF));
     i2c_stop();
 
-    while(!(I2C1->SR1 & I2C_SR1_RXNE));
-    buffer[size-remaining] = I2C1->DR;
+    // Read byte N-1
+    buffer[i++] = I2C1->DR;
+    while (!(I2C1->SR1 & I2C_SR1_RXNE));
+    // Read byte N
+    buffer[i++] = I2C1->DR;;
 
 }
 

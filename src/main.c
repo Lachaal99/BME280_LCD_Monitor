@@ -3,13 +3,12 @@
 #include "bme280.h"
 
 
-volatile float pressure, humidity,temperature;
+float pressure, humidity,temperature;
 int main(void) {
     i2c_setup();
     bme280_setup(0x04,0x04,0x04,0x03,0x01,0x00);
     while (1) {
-        bme280_read_values(&temperature,&pressure,&humidity);
+       bme280_helper();
     }
-
     return 0;
 }

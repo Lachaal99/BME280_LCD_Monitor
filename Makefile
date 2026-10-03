@@ -36,7 +36,6 @@ readelf: build/$(TARGET).elf
 flash: build/$(TARGET).hex
 	@echo "Flashing"
 	sudo openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program $^ verify reset exit"
-	#usbipd attach --wsl --busid 1-9 for the windows wsl transition
 
 %.hex: %.elf
 	$(PREFIX)objcopy -O ihex $^ $@

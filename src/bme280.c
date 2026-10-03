@@ -51,17 +51,14 @@ static void read_trim(void)
 	dig_H1 = trimdata[24];
 	dig_H2 = (int16_t)(trimdata[26] << 8 | trimdata[25]);
 	dig_H3 = trimdata[27];
-	dig_H4 = (int16_t)((trimdata[28] << 4) | (trimdata[29] & 0x0F));
-	dig_H4 = (dig_H4 << 4) >> 4; 
-
-	dig_H5 = (int16_t)((trimdata[30] << 4) | (trimdata[29] >> 4));
-	dig_H5 = (dig_H5 << 4) >> 4;
+	dig_H4 = (int16_t)(((int16_t)(int8_t)trimdata[28] << 4) | (trimdata[29] & 0x0F));
+	dig_H5 = (int16_t)(((int16_t)(int8_t)trimdata[30] << 4) | (trimdata[29] >> 4));
 
 	dig_H6 = (int8_t)trimdata[31];
 }
 
 void bme280_setup(uint8_t osrs_t, uint8_t osrs_h, uint8_t osrs_p, uint8_t mode, uint8_t t_sb, uint8_t filter)
-{
+{	
 	read_trim();
 	uint8_t datatosend;
 	// sending the osrs_h 0xf2
@@ -78,7 +75,7 @@ void bme280_setup(uint8_t osrs_t, uint8_t osrs_h, uint8_t osrs_p, uint8_t mode, 
 static void bme280_read_raw(void)
 {
 	uint8_t rawData[8];
-
+	read_trim();
 	// read data in burst
 	i2c_start();
 	i2c_send_addr(address << 1);
@@ -165,4 +162,22 @@ void bme280_read_values(float* temperature, float* pressure, float* humidity)
 	*temperature = (BME280_compensate_T_int32(tRaw))/100.0f;
 	*pressure = (BME280_compensate_P_int32(pRaw))/100.0f;
 	*humidity = (bme280_compensate_H_int32(hRaw))/1024.0f;
+}
+
+static uint8_t bme280_single_read(uint8_t addr){
+	volatile uint8_t data;
+	
+	i2c_start();
+	i2c_send_addr(address << 1);
+	i2c_send_byte(addr);
+	data = i2c_read_byte();
+	return data;
+}
+
+
+void bme280_helper(){
+	volatile uint8_t array[26];
+	for (uint8_t  i=0; i<26; i++){
+		array[i] = bme280_single_read(0xD0);
+	}
 }
