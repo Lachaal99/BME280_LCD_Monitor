@@ -1,0 +1,12 @@
+#build files
+.[ao]
+
+#vs code dependency
+.vscode/
+
+#object and build directories
+build/
+obj/
+
+*~
+*pdf

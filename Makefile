@@ -2,7 +2,7 @@ TARGET = app
 
 CFLAGS = -mcpu=cortex-m4 -mthumb -Og -g3 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -Wall -Wextra
 INC = -Iinc
-LDFLAGS = -nostdlib -T linker_script.ld
+LDFLAGS = -nostdlib -T linker_script.ld 
 PREFIX = arm-none-eabi-
 
 CC = $(PREFIX)gcc
@@ -18,6 +18,7 @@ all: build/$(TARGET).elf
 
 build/$(TARGET).elf: $(OBJS)
 	@echo "linking .."
+	@mkdir -p $(@D)
 	$(CC) $(LDFLAGS) $^ -o $@
 
 obj/%.o: src/%.c
