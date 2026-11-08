@@ -104,6 +104,12 @@ void LCD_SendData( uint8_t cmd){
 	LCD_ReadBusy();
 }
 
+void LCD_print(const char * string){
+	while( *string != '\0'){
+		LCD_SendData(*string);
+		string++;
+	}
+}
 void LCD_println(uint8_t line, const char * string){
 	if(line == 0 ){
 		// set the cursor to the first line
@@ -161,4 +167,8 @@ void LCD_Init() {
 
 
 
+}
+
+void LCD_clear(){
+	LCD_SendCmd(0x01);
 }

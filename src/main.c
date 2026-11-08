@@ -1,11 +1,56 @@
-#include "stm32f446xx.h"
 #include "lcd.h"
 #include "i2c.h"
 #include "bme280.h"
-#include<stdlib.h>
 
+void float_to_string_baremetal(float val, char* buffer) {
+    char* ptr = buffer;
 
+    // 1. Gestion du signe
+    if (val < 0.0f) {
+        *ptr++ = '-';
+        val = -val;
+    }
 
+    // 2. Arrondi à 2 décimales avant extraction (évite les troncatures bizarres comme 24.999)
+    val += 0.005f;
+
+    // 3. Extraction de la partie entière
+    uint32_t int_part = (uint32_t)val;
+
+    // 4. Extraction de la partie décimale (2 chiffres après la virgule)
+    float frac_float = val - (float)int_part;
+    uint32_t frac_part = (uint32_t)(frac_float * 100.0f);
+
+    // --- CONVERSION DE LA PARTIE ENTIÈRE EN ASCII ---
+    // On écrit d'abord les chiffres à l'envers dans un tampon temporaire
+    char temp_int[12];
+    int i = 0;
+    
+    if (int_part == 0) {
+        temp_int[i++] = '0';
+    } else {
+        while (int_part > 0) {
+            temp_int[i++] = (int_part % 10) + '0';
+            int_part /= 10;
+        }
+    }
+    
+    // On remet la partie entière à l'endroit dans le buffer final
+    while (i > 0) {
+        *ptr++ = temp_int[--i];
+    }
+
+    // --- AJOUT DU POINT DÉCIMAL ---
+    *ptr++ = '.';
+
+    // --- CONVERSION DE LA PARTIE DÉCIMALE EN ASCII ---
+    // On doit forcer l'affichage de 2 chiffres (ex: si frac_part vaut 5, on veut ".05" et non ".5")
+    *ptr++ = (frac_part / 10) + '0';  // Chiffre des dixièmes
+    *ptr++ = (frac_part % 10) + '0';  // Chiffre des centièmes
+
+    // Terminer la chaîne par le caractère nul
+    *ptr = '\0';
+}
 
 float pressure, humidity,temperature;
 char buff[10];
@@ -20,56 +65,35 @@ int main(void) {
     
     while (1) {
        bme280_read_values(&temperature, &pressure,&humidity);
-       LCD_println(0,"Temperature :              ");
-       float_to_string(temperature,buff,2);
+       
+       // temperature
+       float_to_string_baremetal(temperature,buff);
+       LCD_clear();
+       LCD_println(0,"Temperature :");
        LCD_println(1,buff);
+       LCD_SendData(0xdf);
+       LCD_print("C");
+       delay_ms(1000);
+       LCD_clear();
+       
+       //   pressure
+       LCD_println(0,"Pressure:");
+       float_to_string_baremetal(pressure,buff);
+       LCD_println(1,buff);
+       LCD_print(" bar");
+       delay_ms(1000);
+       LCD_clear();
+
+       // humidity
+       LCD_println(0,"Humidity:");
+       float_to_string_baremetal(humidity,buff);
+       LCD_println(1,buff);
+       LCD_print(" \%");
+       delay_ms(1000);
 
     }
     return 0;
 }
 
-void float_to_string(float number, char *buffer, uint8_t precision) {
-    // 1. Handle negative numbers
-    if (number < 0.0f) {
-        *buffer++ = '-';
-        number = -number;
-    }
 
-    // 2. Extract the integer portion
-    uint32_t integer_part = (uint32_t)number;
-    float fractional_part = number - (float)integer_part;
 
-    // 3. Convert integer portion to string (reverse standard algorithm)
-    char temp[12];
-    int i = 0;
-    
-    if (integer_part == 0) {
-        temp[i++] = '0';
-    } else {
-        while (integer_part > 0) {
-            temp[i++] = (integer_part % 10) + '0';
-            integer_part /= 10;
-        }
-    }
-    
-    // Copy reversed integer part into the actual buffer
-    while (i > 0) {
-        *buffer++ = temp[--i];
-    }
-
-    // 4. Handle decimal portion (if precision is requested)
-    if (precision > 0) {
-        *buffer++ = '.'; // Add decimal point
-        
-        // Scale the fraction up by 10 for each precision digit
-        for (uint8_t p = 0; p < precision; p++) {
-            fractional_part *= 10.0f;
-            uint32_t digit = (uint32_t)fractional_part;
-            *buffer++ = digit + '0';
-            fractional_part -= (float)digit;
-        }
-    }
-
-    // 5. Null-terminate the string
-    *buffer = '\0';
-}

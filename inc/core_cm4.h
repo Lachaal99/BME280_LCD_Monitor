@@ -91,6 +91,7 @@
 #define __USED                   __attribute__((used))
 #define __WEAK                   __attribute__((weak))
 #define __PACKED                 __attribute__((packed, aligned(1)))
+#define __COMPILER_BARRIER()     __asm volatile ("" ::: "memory")
 
 /* Core Assembly Instructions */
 #define __NOP()                  __asm volatile ("nop")
