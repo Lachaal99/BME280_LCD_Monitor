@@ -75,7 +75,6 @@ void bme280_setup(uint8_t osrs_t, uint8_t osrs_h, uint8_t osrs_p, uint8_t mode, 
 static void bme280_read_raw(void)
 {
 	uint8_t rawData[8];
-	read_trim();
 	// read data in burst
 	i2c_start();
 	i2c_send_addr(address << 1);

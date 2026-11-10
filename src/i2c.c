@@ -43,6 +43,7 @@ void i2c_setup(void){
 
 //start condition generation
 void i2c_start(void){
+
     while (I2C1->CR1 & I2C_CR1_STOP);
     I2C1->CR1 |= I2C_CR1_START;
     while(!(I2C1->SR1 & I2C_SR1_SB));

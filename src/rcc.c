@@ -1,5 +1,7 @@
 #include "stm32f446xx.h"
 
+uint32_t SystemCoreClock= 1600000U; 
+
 void SystemInit(void) {
     // 1. Enable HSE (High-Speed External Crystal)
     RCC->CR |= RCC_CR_HSEON;
@@ -37,6 +39,9 @@ void SystemInit(void) {
     RCC->CFGR |= RCC_CFGR_SW_PLL;
     while ((RCC->CFGR & RCC_CFGR_SWS_Msk) != RCC_CFGR_SWS_PLL);
 
+
+    // updating the SystemCoreClock variable
+    SystemCoreClock = 180000000U;
     // Grant full access to FPU coprocessors CP10 and CP11
     SCB->CPACR |= ((3UL << 10*2) | (3UL << 11*2));
 

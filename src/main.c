@@ -73,7 +73,7 @@ int main(void) {
        LCD_println(1,buff);
        LCD_SendData(0xdf);
        LCD_print("C");
-       delay_ms(1000);
+       delay_ms(500);
        LCD_clear();
        
        //   pressure
@@ -81,7 +81,7 @@ int main(void) {
        float_to_string_baremetal(pressure,buff);
        LCD_println(1,buff);
        LCD_print(" bar");
-       delay_ms(1000);
+       delay_ms(500);
        LCD_clear();
 
        // humidity
@@ -89,7 +89,7 @@ int main(void) {
        float_to_string_baremetal(humidity,buff);
        LCD_println(1,buff);
        LCD_print(" \%");
-       delay_ms(1000);
+       delay_ms(500);
 
     }
     return 0;
