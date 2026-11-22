@@ -1,6 +1,6 @@
 #include "stm32f446xx.h"
 
-uint32_t SystemCoreClock= 1600000U; 
+uint32_t SystemCoreClock= 16000000U; 
 
 void SystemInit(void) {
     // 1. Enable HSE (High-Speed External Crystal)
