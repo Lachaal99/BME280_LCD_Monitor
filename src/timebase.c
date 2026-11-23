@@ -1,4 +1,5 @@
 #include<stdint.h>
+#include<stdbool.h>
 #include"system_stm32f4xx.h"
 #include"stm32f446xx.h"
 
@@ -22,4 +23,11 @@ uint32_t timebase_get_ms(){
 
 void SysTick_Handler(){
     counter_ms++; 
+}
+
+bool timebase_timeout_expired(uint32_t start_time, uint32_t timeout){
+
+    uint32_t now = timebase_get_ms();
+
+    return ((uint32_t)(now - start_time) >=timeout);
 }
